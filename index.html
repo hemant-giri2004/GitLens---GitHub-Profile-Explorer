@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GitLens — GitHub Profile Explorer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0b0e17;
+      --surface: #111520;
+      --border: #1e2436;
+      --accent: #5be7a9;
+      --accent2: #3d8bff;
+      --muted: #4a5370;
+      --text: #d6daf0;
+      --text-dim: #7d87a8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.4;
+    }
+    .grid-bg {
+      background-image:
+        linear-gradient(rgba(94,231,169,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(94,231,169,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .glow-accent { box-shadow: 0 0 40px rgba(91,231,169,0.08), 0 0 80px rgba(91,231,169,0.04); }
+    .glow-btn:hover { box-shadow: 0 0 30px rgba(91,231,169,0.3); }
+    .text-accent  { color: var(--accent); }
+    .text-accent2 { color: var(--accent2); }
+    .text-dim     { color: var(--text-dim); }
+    .border-subtle { border-color: var(--border); }
+    .search-input {
+      background: rgba(17,21,32,0.9);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      letter-spacing: 0.03em;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,231,169,0.1); }
+    .search-input::placeholder { color: var(--muted); }
+    .search-btn {
+      background: var(--accent);
+      color: #0b0e17;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+    .search-btn:hover { background: #7df0bc; box-shadow: 0 0 30px rgba(91,231,169,0.3); transform: translateY(-1px); }
+    .search-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .stat-card:hover { border-color: rgba(91,231,169,0.3); transform: translateY(-2px); }
+    .profile-card { background: linear-gradient(135deg,#111520 0%,#0d111d 100%); border: 1px solid var(--border); }
+    .badge {
+      background: rgba(61,139,255,0.1);
+      border: 1px solid rgba(61,139,255,0.25);
+      color: var(--accent2);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+    }
+    .avatar-ring { background: linear-gradient(135deg,var(--accent),var(--accent2)); padding: 3px; border-radius: 50%; }
+    .repo-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); transition: all 0.2s; }
+    .repo-card:hover { border-color: rgba(91,231,169,0.2); background: rgba(91,231,169,0.03); }
+    .dot-green  { background-color: #5be7a9; }
+    .dot-blue   { background-color: #3d8bff; }
+    .dot-yellow { background-color: #f0c56b; }
+    .dot-red    { background-color: #f06b6b; }
+    .dot-purple { background-color: #a78bfa; }
+    .dot-orange { background-color: #fb923c; }
+    .font-display { font-family: 'Syne', sans-serif; }
+    .font-serif   { font-family: 'Fraunces', serif; }
+    .font-mono    { font-family: 'DM Mono', monospace; }
+    .dash::before {
+      content: '';
+      display: inline-block;
+      width: 24px; height: 1px;
+      background: var(--accent);
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeup { animation: fadeUp 0.5s ease forwards; }
+    .delay-1 { animation-delay: 0.1s; opacity: 0; }
+    .delay-2 { animation-delay: 0.2s; opacity: 0; }
+    .delay-3 { animation-delay: 0.3s; opacity: 0; }
+    .delay-4 { animation-delay: 0.4s; opacity: 0; }
+    .delay-5 { animation-delay: 0.5s; opacity: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.9s linear infinite; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body class="grid-bg">
+
+  <!-- Header -->
+  <header class="border-b border-subtle sticky top-0 z-50"
+          style="background:rgba(11,14,23,0.92);backdrop-filter:blur(12px);">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.268 2.75 1.026A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.337 1.909-1.294 2.747-1.026 2.747-1.026.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.741 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z" fill="#5be7a9"/>
+        </svg>
+        <span class="font-display text-sm" style="letter-spacing:0.15em;font-weight:700;color:var(--text);">
+          Git<span style="color:var(--accent);">Lens</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-dim font-mono">
+        <span class="w-2 h-2 rounded-full inline-block" style="background:#5be7a9;animation:blink 1.5s ease-in-out infinite;"></span>
+        GitHub REST API
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-16">
+
+    <!-- Hero -->
+    <section class="text-center mb-16 animate-fadeup">
+      <p class="dash text-xs font-mono text-dim uppercase tracking-widest mb-4">GitHub Profile Explorer</p>
+      <h1 class="font-display text-5xl md:text-6xl mb-4 leading-tight" style="font-weight:800;letter-spacing:-0.02em;">
+        Explore any
+        <span class="font-serif italic" style="color:var(--accent);">developer</span><br/>
+        in seconds.
+      </h1>
+      <p class="text-dim font-mono text-sm max-w-md mx-auto mb-12">
+        Enter a GitHub username and instantly surface their profile, stats, repositories, and activity.
+      </p>
+
+      <!-- Search Form -->
+      <form id="search-form" class="flex items-center max-w-xl mx-auto gap-0 glow-accent rounded-lg overflow-hidden">
+        <div class="flex items-center flex-1 px-4 search-input rounded-l-lg" style="border-right:none;">
+          <svg class="mr-3 flex-shrink-0" width="16" height="16" fill="none" viewBox="0 0 24 24">
+            <path d="M15 15l6 6" stroke="#4a5370" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="10" cy="10" r="7" stroke="#4a5370" stroke-width="2"/>
+          </svg>
+          <input
+            id="search-input"
+            type="text"
+            placeholder="Enter GitHub username..."
+            class="bg-transparent flex-1 py-4 search-input border-0"
+            style="border:none;outline:none;"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <button type="submit" id="search-btn" class="search-btn px-7 py-4 rounded-r-lg glow-btn flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M5 12h14M13 6l6 6-6 6"/>
+          </svg>
+          Search
+        </button>
+      </form>
+
+      <p class="mt-4 text-xs text-dim font-mono">
+        Try:
+        <span class="suggest-username text-accent cursor-pointer hover:underline">torvalds</span> ·
+        <span class="suggest-username text-accent cursor-pointer hover:underline">gaearon</span> ·
+        <span class="suggest-username text-accent cursor-pointer hover:underline">sindresorhus</span>
+      </p>
+    </section>
+
+    <!-- Loader -->
+    <div id="loader" style="display:none;" class="flex flex-col items-center justify-center py-20 gap-4">
+      <svg class="spin" width="36" height="36" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="var(--border)" stroke-width="3"/>
+        <path d="M12 2a10 10 0 0110 10" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <p class="text-xs font-mono text-dim tracking-widest uppercase">Fetching profile…</p>
+    </div>
+
+    <!-- Error Box -->
+    <div id="error-box" style="display:none;"
+         class="flex items-center gap-4 max-w-xl mx-auto mt-4 mb-8 rounded-xl px-6 py-4"
+         style="background:rgba(240,107,107,0.08);border:1px solid rgba(240,107,107,0.25);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="flex-shrink-0">
+        <circle cx="12" cy="12" r="10" stroke="#f06b6b" stroke-width="2"/>
+        <path d="M12 8v4M12 16h.01" stroke="#f06b6b" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <p id="error-msg" class="text-sm font-mono" style="color:#f06b6b;"></p>
+    </div>
+
+    <!-- Result Section -->
+    <section id="result-section" style="display:none;">
+
+      <!-- Profile Card -->
+      <div class="profile-card rounded-2xl p-8 mb-6 animate-fadeup delay-1 glow-accent">
+        <div class="flex flex-col md:flex-row gap-8 items-start">
+          <div class="flex-shrink-0">
+            <div class="avatar-ring w-28 h-28 rounded-full">
+              <div class="w-full h-full rounded-full overflow-hidden" style="background:var(--border);">
+                <img id="avatar-img" src="" alt="avatar" class="w-full h-full object-cover"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="flex flex-wrap items-center gap-3 mb-1">
+              <h2 id="profile-name" class="font-display text-2xl" style="font-weight:700;letter-spacing:-0.01em;"></h2>
+              <span id="pro-badge" class="badge px-3 py-1 rounded-full" style="display:none;">PRO</span>
+            </div>
+            <p id="profile-login" class="text-dim font-mono text-sm mb-3"></p>
+            <p id="profile-bio" class="text-sm mb-5" style="color:var(--text-dim);max-width:520px;line-height:1.7;"></p>
+
+            <div class="flex flex-wrap gap-x-6 gap-y-2 text-xs font-mono text-dim">
+              <span id="meta-location-wrap" class="items-center gap-2" style="display:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" stroke="#4a5370" stroke-width="2"/>
+                  <circle cx="12" cy="11" r="3" stroke="#4a5370" stroke-width="2"/>
+                </svg>
+                <span id="meta-location"></span>
+              </span>
+
+              <span id="meta-blog-wrap" class="items-center gap-2" style="display:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" stroke="#4a5370" stroke-width="2" stroke-linecap="round"/>
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" stroke="#4a5370" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <a id="meta-blog" href="#" target="_blank" rel="noopener" class="text-accent2 hover:underline"></a>
+              </span>
+
+              <span class="flex items-center gap-2">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#4a5370" stroke-width="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6" stroke="#4a5370" stroke-width="2"/>
+                  <line x1="8" y1="2" x2="8" y2="6" stroke="#4a5370" stroke-width="2"/>
+                </svg>
+                <span id="meta-joined"></span>
+              </span>
+
+              <span id="meta-twitter-wrap" class="items-center gap-2" style="display:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="#4a5370">
+                  <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
+                </svg>
+                <span id="meta-twitter"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="flex md:flex-col gap-6 md:gap-4 md:text-right">
+            <div>
+              <p id="followers-count" class="font-display text-2xl text-accent" style="font-weight:700;letter-spacing:-0.02em;"></p>
+              <p class="text-xs text-dim font-mono">followers</p>
+            </div>
+            <div>
+              <p id="following-count" class="font-display text-2xl" style="font-weight:700;letter-spacing:-0.02em;"></p>
+              <p class="text-xs text-dim font-mono">following</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="stat-card rounded-xl p-5 animate-fadeup delay-2">
+          <p class="text-xs font-mono text-dim mb-2 uppercase tracking-widest">Repositories</p>
+          <p id="stat-repos" class="font-display text-3xl text-accent" style="font-weight:700;letter-spacing:-0.03em;"></p>
+        </div>
+        <div class="stat-card rounded-xl p-5 animate-fadeup delay-2">
+          <p class="text-xs font-mono text-dim mb-2 uppercase tracking-widest">Gists</p>
+          <p id="stat-gists" class="font-display text-3xl" style="font-weight:700;letter-spacing:-0.03em;"></p>
+        </div>
+        <div class="stat-card rounded-xl p-5 animate-fadeup delay-3">
+          <p class="text-xs font-mono text-dim mb-2 uppercase tracking-widest">Total Stars</p>
+          <p id="stat-stars" class="font-display text-3xl text-accent2" style="font-weight:700;letter-spacing:-0.03em;"></p>
+        </div>
+        <div class="stat-card rounded-xl p-5 animate-fadeup delay-3">
+          <p class="text-xs font-mono text-dim mb-2 uppercase tracking-widest">Total Forks</p>
+          <p id="stat-forks" class="font-display text-3xl" style="font-weight:700;letter-spacing:-0.03em;"></p>
+        </div>
+      </div>
+
+      <!-- Repos + Sidebar -->
+      <div class="grid md:grid-cols-3 gap-6">
+
+        <!-- Repos -->
+        <div class="md:col-span-2 animate-fadeup delay-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-display text-sm uppercase tracking-widest" style="font-weight:700;">
+              <span class="text-accent">▸</span> Popular Repositories
+            </h3>
+            <span id="repos-total" class="text-xs text-dim font-mono"></span>
+          </div>
+          <div id="repos-list" class="space-y-3"></div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="space-y-4 animate-fadeup delay-5">
+
+          <div class="stat-card rounded-xl p-5">
+            <h3 class="font-display text-xs uppercase tracking-widest mb-4" style="font-weight:700;">
+              <span class="text-accent">▸</span> Top Languages
+            </h3>
+            <div id="languages-list" class="space-y-3"></div>
+          </div>
+
+          <div id="orgs-card" class="stat-card rounded-xl p-5" style="display:none;">
+            <h3 class="font-display text-xs uppercase tracking-widest mb-4" style="font-weight:700;">
+              <span class="text-accent">▸</span> Organizations
+            </h3>
+            <div id="orgs-list" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="stat-card rounded-xl p-5">
+            <h3 class="font-display text-xs uppercase tracking-widest mb-4" style="font-weight:700;">
+              <span class="text-accent">▸</span> Recent Activity
+            </h3>
+            <div id="activity-list" class="space-y-3"></div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-20 border-t border-subtle py-8">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <p class="text-xs font-mono text-dim">Built with the GitHub REST API · No auth required for public profiles</p>
+      <p class="text-xs font-mono text-dim">GitLens © 2025</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
