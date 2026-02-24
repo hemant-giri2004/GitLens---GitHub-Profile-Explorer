@@ -13,14 +13,14 @@
 
 **A sleek, zero-dependency GitHub profile explorer — built with vanilla JS and Tailwind CSS.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-5be7a9?style=for-the-badge&logo=github)](https://your-username.github.io/gitlens)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-5be7a9?style=for-the-badge&logo=github)](https://hemant-giri2004.github.io/GitLens---GitHub-Profile-Explorer/)
 [![GitHub Stars](https://img.shields.io/github/stars/your-username/gitlens?style=for-the-badge&color=5be7a9)](https://github.com/your-username/gitlens/stargazers)
 [![License](https://img.shields.io/badge/License-MIT-3d8bff?style=for-the-badge)](LICENSE)
 [![Made with](https://img.shields.io/badge/Made%20with-Vanilla%20JS-f0c56b?style=for-the-badge&logo=javascript)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 
 <br/>
 
-![GitLens Preview](https://raw.githubusercontent.com/your-username/gitlens/main/preview.png)
+![GitLens Preview](https://hemant-giri2004.github.io/GitLens---GitHub-Profile-Explorer/)
 
 <br/>
 
